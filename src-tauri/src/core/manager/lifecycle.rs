@@ -1,17 +1,13 @@
 use super::{CoreManager, RunningMode};
 use crate::config::{Config, ConfigType, IVerge};
-use crate::{
-    core::{
-        logger::CLASH_LOGGER,
-        service::{SERVICE_MANAGER, ServiceStatus},
-    },
-    logging,
-    utils::logging::Type,
-};
+#[cfg(not(target_os = "android"))]
+use crate::core::service::{SERVICE_MANAGER, ServiceStatus};
+use crate::{core::logger::CLASH_LOGGER, logging, utils::logging::Type};
 use anyhow::Result;
 use smartstring::alias::String;
 
 impl CoreManager {
+    #[cfg(not(target_os = "android"))]
     pub async fn start_core(&self) -> Result<()> {
         self.prepare_startup().await?;
 
@@ -21,6 +17,30 @@ impl CoreManager {
         }
     }
 
+    /// On Android, start_core writes the mihomo config and signals the Kotlin
+    /// layer to start the VPN service (which runs mihomo in-process).
+    #[cfg(target_os = "android")]
+    pub async fn start_core(&self) -> Result<()> {
+        logging!(info, Type::Core, "Starting core on Android via VPN service");
+        self.set_running_mode(RunningMode::Service);
+
+        // Generate the runtime config file
+        let run_path = Config::generate_file(ConfigType::Run).await?;
+        let config_path = run_path
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("Failed to convert config path to string"))?
+            .to_string();
+
+        // Signal the Android Kotlin layer to start VPN with this config
+        if let Some(app) = crate::APP_HANDLE.get() {
+            use tauri::Emitter;
+            let _ = app.emit("android-vpn-start", &config_path);
+        }
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "android"))]
     pub async fn stop_core(&self) -> Result<()> {
         CLASH_LOGGER.clear_logs().await;
 
@@ -31,12 +51,29 @@ impl CoreManager {
         }
     }
 
+    #[cfg(target_os = "android")]
+    pub async fn stop_core(&self) -> Result<()> {
+        CLASH_LOGGER.clear_logs().await;
+        logging!(info, Type::Core, "Stopping core on Android via VPN service");
+
+        if let Some(app) = crate::APP_HANDLE.get() {
+            use tauri::Emitter;
+            let _ = app.emit("android-vpn-stop", ());
+        }
+
+        self.set_running_mode(RunningMode::NotRunning);
+        Ok(())
+    }
+
     pub async fn restart_core(&self) -> Result<()> {
         logging!(info, Type::Core, "Restarting core");
         self.stop_core().await?;
 
-        if SERVICE_MANAGER.lock().await.init().await.is_ok() {
-            let _ = SERVICE_MANAGER.lock().await.refresh().await;
+        #[cfg(not(target_os = "android"))]
+        {
+            if SERVICE_MANAGER.lock().await.init().await.is_ok() {
+                let _ = SERVICE_MANAGER.lock().await.refresh().await;
+            }
         }
 
         self.start_core().await
@@ -64,6 +101,7 @@ impl CoreManager {
             .map_err(|e| e.to_string().into())
     }
 
+    #[cfg(not(target_os = "android"))]
     async fn prepare_startup(&self) -> Result<()> {
         #[cfg(target_os = "windows")]
         self.wait_for_service_if_needed().await;

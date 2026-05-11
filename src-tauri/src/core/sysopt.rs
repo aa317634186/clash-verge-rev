@@ -7,11 +7,13 @@ use crate::{
     utils::logging::Type,
 };
 use anyhow::Result;
+#[cfg(not(target_os = "android"))]
 use scopeguard::defer;
 use smartstring::alias::String;
 use std::sync::atomic::{AtomicBool, Ordering};
-#[cfg(not(target_os = "windows"))]
+#[cfg(all(not(target_os = "windows"), not(target_os = "android")))]
 use sysproxy::{Autoproxy, Sysproxy};
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_autostart::ManagerExt;
 
 pub struct Sysopt {
@@ -28,6 +30,7 @@ static DEFAULT_BYPASS: &str =
 #[cfg(target_os = "macos")]
 static DEFAULT_BYPASS: &str = "127.0.0.1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,172.29.0.0/16,localhost,*.local,*.crashlytics.com,<local>";
 
+#[cfg(not(target_os = "android"))]
 async fn get_bypass() -> String {
     let use_default = Config::verge()
         .await
@@ -95,6 +98,42 @@ impl Default for Sysopt {
 // Use simplified singleton_lazy macro
 singleton_lazy!(Sysopt, SYSOPT, Sysopt::default);
 
+#[cfg(target_os = "android")]
+impl Sysopt {
+    pub fn is_initialed(&self) -> bool {
+        self.initialed.load(Ordering::SeqCst)
+    }
+
+    pub fn init_guard_sysproxy(&self) -> Result<()> {
+        // On Android, proxy is handled via VPN service - no system proxy needed
+        Ok(())
+    }
+
+    /// No-op on Android: proxy is handled via VPN service
+    #[allow(clippy::unused_async)]
+    pub async fn update_sysproxy(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// No-op on Android: proxy is handled via VPN service
+    #[allow(clippy::unused_async)]
+    pub async fn reset_sysproxy(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// No-op on Android: auto-launch is handled by BootReceiver
+    #[allow(clippy::unused_async)]
+    pub async fn update_launch(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// On Android, launch status is managed by the Kotlin layer
+    pub fn get_launch_status(&self) -> Result<bool> {
+        Ok(false)
+    }
+}
+
+#[cfg(not(target_os = "android"))]
 impl Sysopt {
     pub fn is_initialed(&self) -> bool {
         self.initialed.load(Ordering::SeqCst)

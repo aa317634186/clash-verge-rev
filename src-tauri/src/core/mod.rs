@@ -1,3 +1,5 @@
+#[cfg(target_os = "android")]
+pub mod android_bridge;
 pub mod async_proxy_query;
 pub mod backup;
 pub mod event_driven_proxy;

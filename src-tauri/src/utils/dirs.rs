@@ -6,7 +6,7 @@ use crate::{
 use anyhow::Result;
 use async_trait::async_trait;
 use once_cell::sync::OnceCell;
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "android")))]
 use std::iter;
 use std::{fs, path::PathBuf};
 use tauri::Manager;
@@ -213,7 +213,12 @@ pub fn get_encryption_key() -> Result<Vec<u8>> {
     }
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "android")]
+pub fn ensure_mihomo_safe_dir() -> Option<PathBuf> {
+    super::android::ensure_mihomo_safe_dir()
+}
+
+#[cfg(all(unix, not(target_os = "android")))]
 pub fn ensure_mihomo_safe_dir() -> Option<PathBuf> {
     iter::once("/tmp")
         .map(PathBuf::from)
@@ -235,7 +240,12 @@ pub fn ensure_mihomo_safe_dir() -> Option<PathBuf> {
         })
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "android")]
+pub fn ipc_path() -> Result<PathBuf> {
+    super::android::ipc_path()
+}
+
+#[cfg(all(unix, not(target_os = "android")))]
 pub fn ipc_path() -> Result<PathBuf> {
     ensure_mihomo_safe_dir()
         .map(|base_dir| base_dir.join("verge").join("verge-mihomo.sock"))

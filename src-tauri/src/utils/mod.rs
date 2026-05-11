@@ -1,3 +1,5 @@
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod autostart;
 pub mod dirs;
 pub mod draft;

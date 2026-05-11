@@ -58,10 +58,12 @@ class ClashVpnService : VpnService() {
 
     private fun configure(configPath: String) {
         val builder = Builder()
-            .setMtu(9000)
+            .setMtu(1500) // Standard MTU for mobile networks
             .addAddress("172.19.0.1", 30)
             .addRoute("0.0.0.0", 0)
             .addRoute("::", 0)
+            // Default DNS servers; overridden by mihomo config's dns section at the proxy layer.
+            // These are used as the system-level DNS for the TUN interface.
             .addDns("1.1.1.1")
             .addDns("8.8.8.8")
             .setSession("Clash Verge")
@@ -72,6 +74,7 @@ class ClashVpnService : VpnService() {
         tunInterface = builder.establish()
         if (tunInterface == null) {
             Log.e(TAG, "Failed to establish TUN interface")
+            MihomoCore.notifyVpnError("Failed to establish TUN interface - VPN permission may not be granted")
             stopSelf()
             return
         }
@@ -80,6 +83,7 @@ class ClashVpnService : VpnService() {
         val started = MihomoCore.start(configPath, tunFd)
         if (!started) {
             Log.e(TAG, "Failed to start mihomo core")
+            MihomoCore.notifyVpnError("Failed to start mihomo core")
             tunInterface?.close()
             tunInterface = null
             stopSelf()
@@ -87,16 +91,21 @@ class ClashVpnService : VpnService() {
         }
 
         isRunning = true
+        MihomoCore.notifyVpnStarted()
         Log.i(TAG, "VPN service started successfully")
     }
 
     private fun shutdown() {
+        val wasRunning = isRunning
         isRunning = false
         MihomoCore.stop()
         tunInterface?.close()
         tunInterface = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+        if (wasRunning) {
+            MihomoCore.notifyVpnStopped()
+        }
         Log.i(TAG, "VPN service stopped")
     }
 

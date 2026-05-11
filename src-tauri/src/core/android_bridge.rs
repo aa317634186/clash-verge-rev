@@ -21,6 +21,8 @@ pub extern "system" fn Java_io_github_clashvergerev_clashverge_vpn_MihomoCore_on
         Type::Core,
         "Android VPN service started (JNI callback)"
     );
+    // Update shared atomic state so get_vpn_status returns the correct value
+    crate::cmd::android::VPN_RUNNING.store(true, std::sync::atomic::Ordering::Relaxed);
     if let Some(app) = crate::APP_HANDLE.get() {
         use tauri::Emitter;
         let _ = app.emit("vpn-state-changed", "started");
@@ -38,6 +40,8 @@ pub extern "system" fn Java_io_github_clashvergerev_clashverge_vpn_MihomoCore_on
         Type::Core,
         "Android VPN service stopped (JNI callback)"
     );
+    // Update shared atomic state so get_vpn_status returns the correct value
+    crate::cmd::android::VPN_RUNNING.store(false, std::sync::atomic::Ordering::Relaxed);
     if let Some(app) = crate::APP_HANDLE.get() {
         use tauri::Emitter;
         let _ = app.emit("vpn-state-changed", "stopped");
@@ -62,6 +66,8 @@ pub extern "system" fn Java_io_github_clashvergerev_clashverge_vpn_MihomoCore_on
         "Android VPN error (JNI callback): {}",
         error
     );
+    // VPN is not running after an error
+    crate::cmd::android::VPN_RUNNING.store(false, std::sync::atomic::Ordering::Relaxed);
     if let Some(app) = crate::APP_HANDLE.get() {
         use tauri::Emitter;
         let _ = app.emit("vpn-state-changed", format!("error:{error}"));

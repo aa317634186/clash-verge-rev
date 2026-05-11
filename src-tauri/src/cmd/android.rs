@@ -1,8 +1,14 @@
 //! Android-specific Tauri commands for VPN control
 use super::CmdResult;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Emitter;
 
+/// Shared VPN running state, updated by JNI callbacks from the Kotlin side.
+pub static VPN_RUNNING: AtomicBool = AtomicBool::new(false);
+
 /// Signals the Android Kotlin layer to start VPN service with the given config path.
+/// Note: This is an event-driven fire-and-forget command. The actual start result
+/// is reported asynchronously via the "vpn-state-changed" event from JNI callbacks.
 #[tauri::command]
 pub async fn start_vpn(config_path: String) -> CmdResult {
     let app = crate::APP_HANDLE
@@ -14,6 +20,8 @@ pub async fn start_vpn(config_path: String) -> CmdResult {
 }
 
 /// Signals the Android Kotlin layer to stop the VPN service.
+/// Note: This is an event-driven fire-and-forget command. The actual stop result
+/// is reported asynchronously via the "vpn-state-changed" event from JNI callbacks.
 #[tauri::command]
 pub async fn stop_vpn() -> CmdResult {
     let app = crate::APP_HANDLE
@@ -24,12 +32,11 @@ pub async fn stop_vpn() -> CmdResult {
     Ok(())
 }
 
-/// Returns current VPN running status.
-/// Actual state is tracked via events from the Kotlin side.
+/// Returns current VPN running status from shared atomic state.
+/// The state is updated by JNI callbacks (onVpnStarted/onVpnStopped) from the Kotlin layer.
 #[tauri::command]
 pub async fn get_vpn_status() -> CmdResult<bool> {
-    // State is managed by the Kotlin VpnManager and updated via JNI callbacks
-    Ok(false)
+    Ok(VPN_RUNNING.load(Ordering::Relaxed))
 }
 
 /// Requests VPN permission from the Android system via the Kotlin layer.

@@ -151,6 +151,10 @@ mod app_init {
 
     pub fn generate_handlers()
     -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
+        // NOTE: Desktop and Android handler lists share ~50 identical entries but must be
+        // duplicated due to Rust's cfg macro constraints (generate_handler! is a single
+        // macro invocation that cannot be split). Future refactoring could use a proc macro
+        // to compose shared + platform-specific handlers.
         #[cfg(not(target_os = "android"))]
         {
             tauri::generate_handler![

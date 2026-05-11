@@ -3,6 +3,7 @@ package io.github.clashvergerev.clashverge.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.VpnService
 import android.util.Log
 import io.github.clashvergerev.clashverge.vpn.VpnManager
 
@@ -29,6 +30,14 @@ class BootReceiver : BroadcastReceiver() {
         val configPath = prefs.getString(KEY_CONFIG_PATH, null)
         if (configPath == null) {
             Log.w(TAG, "Auto-start enabled but no config path found")
+            return
+        }
+
+        // Verify VPN permission is still granted before attempting to start.
+        // VpnService.prepare() returns null if permission is already granted.
+        val prepareIntent = VpnService.prepare(context)
+        if (prepareIntent != null) {
+            Log.w(TAG, "VPN permission not granted, cannot auto-start on boot")
             return
         }
 

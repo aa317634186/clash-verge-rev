@@ -23,6 +23,15 @@ object MihomoCore {
     private external fun nativeStop()
     private external fun nativeIsRunning(): Boolean
 
+    // JNI callbacks declared in android_bridge.rs - these are called from Kotlin
+    // to notify the Rust backend about VPN state changes.
+    @JvmStatic
+    external fun onVpnStarted()
+    @JvmStatic
+    external fun onVpnStopped()
+    @JvmStatic
+    external fun onVpnError(errorMsg: String)
+
     /**
      * Starts the mihomo core with the given config file and TUN file descriptor.
      * Returns true if the core started successfully.
@@ -56,6 +65,39 @@ object MihomoCore {
         } catch (e: UnsatisfiedLinkError) {
             Log.e(TAG, "Native method not available: ${e.message}")
             false
+        }
+    }
+
+    /**
+     * Notifies the Rust backend that VPN has started.
+     */
+    fun notifyVpnStarted() {
+        try {
+            onVpnStarted()
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "onVpnStarted native method not available: ${e.message}")
+        }
+    }
+
+    /**
+     * Notifies the Rust backend that VPN has stopped.
+     */
+    fun notifyVpnStopped() {
+        try {
+            onVpnStopped()
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "onVpnStopped native method not available: ${e.message}")
+        }
+    }
+
+    /**
+     * Notifies the Rust backend that a VPN error occurred.
+     */
+    fun notifyVpnError(errorMsg: String) {
+        try {
+            onVpnError(errorMsg)
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "onVpnError native method not available: ${e.message}")
         }
     }
 }

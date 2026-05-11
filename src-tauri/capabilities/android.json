@@ -26,12 +26,7 @@
     "fs:allow-exists",
     {
       "identifier": "fs:scope",
-      "allow": [
-        "$APPDATA/**",
-        "$RESOURCE/../**",
-        "$APPCACHE/**",
-        "$APPCONFIG/**"
-      ]
+      "allow": ["$APPDATA/**", "$RESOURCE/**", "$APPCACHE/**", "$APPCONFIG/**"]
     },
     "fs:allow-write-file",
     "fs:allow-app-read",

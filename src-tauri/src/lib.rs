@@ -434,6 +434,7 @@ pub fn run() {
 
         pub fn handle_window_focus(focused: bool) {
             AsyncHandler::spawn(move || async move {
+                #[cfg(not(target_os = "android"))]
                 let is_enable_global_hotkey = Config::verge()
                     .await
                     .data_arc()
@@ -451,7 +452,10 @@ pub fn run() {
                             .register_system_hotkey(SystemHotkey::CmdW)
                             .await;
                     }
-                    let _ = hotkey::Hotkey::global().init(true).await;
+                    #[cfg(not(target_os = "android"))]
+                    {
+                        let _ = hotkey::Hotkey::global().init(true).await;
+                    }
                     return;
                 }
 
@@ -462,6 +466,7 @@ pub fn run() {
                     let _ = hotkey::Hotkey::global().unregister_system_hotkey(SystemHotkey::CmdW);
                 }
 
+                #[cfg(not(target_os = "android"))]
                 if !is_enable_global_hotkey {
                     let _ = hotkey::Hotkey::global().reset();
                 }

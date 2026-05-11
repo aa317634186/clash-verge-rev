@@ -57,6 +57,22 @@ object SplitTunnelManager {
     fun setApps(context: Context, packages: Set<String>) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putStringSet(KEY_APPS, packages).apply()
+        // Notify Rust backend of the updated app list
+        notifyRustOfAppsUpdate(packages)
+    }
+
+    /**
+     * Syncs the current split tunnel app list to the Rust backend via JNI.
+     * Should be called on initialization and whenever the list changes.
+     */
+    fun syncAppsToRust(context: Context) {
+        val apps = getApps(context)
+        notifyRustOfAppsUpdate(apps)
+    }
+
+    private fun notifyRustOfAppsUpdate(packages: Set<String>) {
+        val json = org.json.JSONArray(packages.toList()).toString()
+        MihomoCore.notifySplitTunnelAppsUpdated(json)
     }
 
     /**

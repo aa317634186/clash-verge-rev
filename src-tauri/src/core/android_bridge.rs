@@ -87,3 +87,34 @@ pub extern "system" fn Java_io_github_clashvergerev_clashverge_vpn_MihomoCore_is
     let mode = CoreManager::global().get_running_mode();
     matches!(*mode, RunningMode::Service | RunningMode::Sidecar) as jboolean
 }
+
+/// Called from Kotlin when the split tunnel app list is updated.
+/// Receives a JSON array string of package names (e.g. `["com.app1","com.app2"]`).
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_clashvergerev_clashverge_vpn_MihomoCore_onSplitTunnelAppsUpdated<
+    'a,
+>(
+    mut env: JNIEnv<'a>,
+    _class: JClass<'a>,
+    apps_json: JString<'a>,
+) {
+    let json_str: String = env
+        .get_string(&apps_json)
+        .map(|s| s.into())
+        .unwrap_or_else(|_| "[]".to_string());
+
+    logging!(
+        info,
+        Type::Core,
+        "Split tunnel apps updated (JNI callback): {}",
+        json_str
+    );
+
+    // Parse JSON array of package names
+    let apps: Vec<String> = serde_json::from_str(&json_str).unwrap_or_default();
+
+    // Update shared state
+    if let Ok(mut state) = crate::cmd::android::SPLIT_TUNNEL_APPS.write() {
+        *state = apps;
+    }
+}

@@ -31,6 +31,8 @@ object MihomoCore {
     external fun onVpnStopped()
     @JvmStatic
     external fun onVpnError(errorMsg: String)
+    @JvmStatic
+    external fun onSplitTunnelAppsUpdated(appsJson: String)
 
     /**
      * Starts the mihomo core with the given config file and TUN file descriptor.
@@ -98,6 +100,18 @@ object MihomoCore {
             onVpnError(errorMsg)
         } catch (e: UnsatisfiedLinkError) {
             Log.e(TAG, "onVpnError native method not available: ${e.message}")
+        }
+    }
+
+    /**
+     * Notifies the Rust backend of the current split tunnel app list.
+     * @param appsJson JSON array string of package names, e.g. ["com.app1","com.app2"]
+     */
+    fun notifySplitTunnelAppsUpdated(appsJson: String) {
+        try {
+            onSplitTunnelAppsUpdated(appsJson)
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "onSplitTunnelAppsUpdated native method not available: ${e.message}")
         }
     }
 }

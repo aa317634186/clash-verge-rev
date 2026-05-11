@@ -1,10 +1,15 @@
 //! Android-specific Tauri commands for VPN control
 use super::CmdResult;
+use std::sync::RwLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Emitter;
 
 /// Shared VPN running state, updated by JNI callbacks from the Kotlin side.
 pub static VPN_RUNNING: AtomicBool = AtomicBool::new(false);
+
+/// Shared split tunnel app list, updated by JNI callback from the Kotlin side.
+/// Kotlin calls `onSplitTunnelAppsUpdated` to populate this state.
+pub static SPLIT_TUNNEL_APPS: RwLock<Vec<String>> = RwLock::new(Vec::new());
 
 /// Signals the Android Kotlin layer to start VPN service with the given config path.
 /// Note: This is an event-driven fire-and-forget command. The actual start result
@@ -51,15 +56,13 @@ pub async fn request_vpn_permission() -> CmdResult {
 }
 
 /// Gets the list of apps configured for split tunneling.
+/// Reads from a shared state populated by the Kotlin layer via JNI callback.
 #[tauri::command]
 pub async fn get_split_tunnel_apps() -> CmdResult<Vec<String>> {
-    // Retrieves from SharedPreferences via Kotlin layer
-    let app = crate::APP_HANDLE
-        .get()
-        .ok_or_else(|| "App handle not initialized".to_string())?;
-    app.emit("android-get-split-tunnel-apps", ())
-        .map_err(|e| e.to_string())?;
-    Ok(vec![])
+    let apps = SPLIT_TUNNEL_APPS
+        .read()
+        .map_err(|e| format!("Failed to read split tunnel apps: {e}"))?;
+    Ok(apps.clone())
 }
 
 /// Sets the list of apps for split tunneling.

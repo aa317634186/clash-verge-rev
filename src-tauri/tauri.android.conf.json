@@ -1,0 +1,18 @@
+{
+  "bundle": {
+    "externalBin": [],
+    "resources": ["resources"]
+  },
+  "app": {
+    "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": ["**"],
+          "requireLiteralLeadingDot": false
+        }
+      }
+    }
+  },
+  "plugins": {}
+}

@@ -8,9 +8,11 @@ import SettingClash from "@/components/setting/setting-clash";
 import SettingSystem from "@/components/setting/setting-system";
 import SettingVergeAdvanced from "@/components/setting/setting-verge-advanced";
 import SettingVergeBasic from "@/components/setting/setting-verge-basic";
+import AndroidVpnSettings from "@/pages/settings/android-vpn-settings";
 import { openWebUrl } from "@/services/cmds";
 import { showNotice } from "@/services/noticeService";
 import { useThemeMode } from "@/services/states";
+import { isAndroid } from "@/utils/platform";
 
 const SettingPage = () => {
   const { t } = useTranslation();
@@ -100,11 +102,22 @@ const SettingPage = () => {
           <Box
             sx={{
               borderRadius: 2,
+              marginBottom: 1.5,
               backgroundColor: isDark ? "#282a36" : "#ffffff",
             }}
           >
             <SettingVergeAdvanced onError={onError} />
           </Box>
+          {isAndroid() && (
+            <Box
+              sx={{
+                borderRadius: 2,
+                backgroundColor: isDark ? "#282a36" : "#ffffff",
+              }}
+            >
+              <AndroidVpnSettings />
+            </Box>
+          )}
         </Grid>
       </Grid>
     </BasePage>

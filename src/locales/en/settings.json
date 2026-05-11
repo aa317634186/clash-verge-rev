@@ -122,6 +122,23 @@
           }
         }
       }
+    },
+    "androidVpn": {
+      "title": "Android VPN Settings",
+      "autoStart": "Auto-start on Boot",
+      "autoStartDesc": "Start VPN service when device boots",
+      "batteryOptimization": "Battery Optimization",
+      "batteryOptimizationDesc": "Exclude from battery optimization",
+      "request": "Request",
+      "splitTunneling": "Split Tunneling",
+      "splitTunnelingDesc": "Control which apps use the VPN",
+      "splitModes": {
+        "disabled": "Disabled",
+        "whitelist": "Whitelist",
+        "blacklist": "Blacklist"
+      },
+      "perAppList": "Per-app List",
+      "perAppListDesc": "{{count}} apps configured"
     }
   },
   "components": {

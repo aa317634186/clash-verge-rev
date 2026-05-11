@@ -1,0 +1,52 @@
+.mobile {
+  &.layout {
+    .the_titlebar {
+      display: none;
+    }
+
+    .layout-content {
+      flex-direction: column-reverse;
+
+      &__left {
+        display: none;
+      }
+
+      &__right {
+        flex: 1 1 100%;
+        width: 100%;
+        border: none;
+
+        .the-bar {
+          display: none;
+        }
+
+        .the-content {
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+        }
+      }
+    }
+  }
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1200;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+
+  .MuiBottomNavigation-root {
+    min-height: 56px;
+  }
+
+  .MuiBottomNavigationAction-root {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 6px 0;
+  }
+}

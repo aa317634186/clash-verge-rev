@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "android"))]
+use crate::core::{hotkey, tray};
 use crate::{
     config::{Config, IVerge},
     core::{CoreManager, handle, sysopt},
@@ -5,8 +7,6 @@ use crate::{
     module::lightweight,
     utils::{draft::SharedBox, logging::Type},
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::{hotkey, tray};
 use anyhow::Result;
 use serde_yaml_ng::Mapping;
 

@@ -1,4 +1,6 @@
 use super::{IClashTemp, IProfiles, IRuntime, IVerge};
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use crate::{
     cmd,
     config::{PrfItem, profiles_append_item_safe},
@@ -7,8 +9,6 @@ use crate::{
     enhance, logging, logging_error,
     utils::{Draft, dirs, help, logging::Type},
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::tray;
 use anyhow::{Result, anyhow};
 use backoff::{Error as BackoffError, ExponentialBackoff};
 use smartstring::alias::String;

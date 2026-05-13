@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use crate::{
     config::Config,
     core::{CoreManager, handle},
@@ -5,8 +7,6 @@ use crate::{
     process::AsyncHandler,
     utils::{self, logging::Type, resolve},
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::tray;
 use serde_yaml_ng::{Mapping, Value};
 use smartstring::alias::String;
 

@@ -427,6 +427,7 @@ pub fn run() {
 
             if let tauri::WindowEvent::CloseRequested { api, .. } = api {
                 api.prevent_close();
+                #[cfg(not(target_os = "android"))]
                 if let Some(window) = core::handle::Handle::get_window() {
                     let _ = window.hide();
                 }

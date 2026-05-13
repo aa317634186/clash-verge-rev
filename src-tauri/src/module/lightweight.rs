@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "android"))]
+use crate::core::tray::Tray;
 use crate::{
     config::Config,
     core::{handle, timer::Timer},
@@ -5,8 +7,6 @@ use crate::{
     process::AsyncHandler,
     utils::logging::Type,
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::tray::Tray;
 
 #[cfg(target_os = "macos")]
 use crate::logging_error;

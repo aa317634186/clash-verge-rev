@@ -1,10 +1,10 @@
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use crate::{
     config::Config,
     logging, logging_error,
     utils::{dirs, init::service_writer_config, logging::Type},
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::tray;
 use anyhow::{Context, Result, bail};
 use clash_verge_service_ipc::CoreConfig;
 use compact_str::CompactString;
@@ -317,12 +317,35 @@ async fn reinstall_service() -> Result<()> {
 }
 
 /// 强制重装服务（UI修复按钮）
+#[cfg(not(target_os = "android"))]
 pub async fn force_reinstall_service() -> Result<()> {
     logging!(info, Type::Service, "用户请求强制重装服务");
     reinstall_service().await.map_err(|err| {
         logging!(error, Type::Service, "强制重装服务失败: {}", err);
         err
     })
+}
+
+/// No-op on Android: service management is handled by VPN service
+#[cfg(target_os = "android")]
+pub async fn force_reinstall_service() -> Result<()> {
+    Ok(())
+}
+
+/// Android stubs for service management functions
+#[cfg(target_os = "android")]
+async fn install_service() -> Result<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "android")]
+async fn uninstall_service() -> Result<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "android")]
+async fn reinstall_service() -> Result<()> {
+    Ok(())
 }
 
 /// 检查服务版本 - 使用IPC通信

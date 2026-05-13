@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use crate::{
     cmd,
     config::{Config, PrfItem, PrfOption, profiles::profiles_draft_update_item_safe},
@@ -5,8 +7,6 @@ use crate::{
     logging, logging_error,
     utils::logging::Type,
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::tray;
 use anyhow::{Result, bail};
 use smartstring::alias::String;
 use tauri::Emitter;

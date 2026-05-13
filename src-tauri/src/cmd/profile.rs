@@ -1,5 +1,7 @@
 use super::CmdResult;
 use super::StringifyErr;
+#[cfg(not(target_os = "android"))]
+use crate::core::tray::Tray;
 use crate::{
     config::{
         Config, IProfiles, PrfItem, PrfOption,
@@ -15,8 +17,6 @@ use crate::{
     ret_err,
     utils::{dirs, help, logging::Type},
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::tray::Tray;
 use scopeguard::defer;
 use smartstring::alias::String;
 use std::sync::atomic::{AtomicBool, Ordering};

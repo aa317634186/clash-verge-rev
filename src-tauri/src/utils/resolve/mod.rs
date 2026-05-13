@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+#[cfg(not(target_os = "android"))]
+use crate::core::{hotkey::Hotkey, tray::Tray};
 use crate::{
     config::Config,
     core::{
@@ -12,8 +14,6 @@ use crate::{
     process::AsyncHandler,
     utils::{init, logging::Type, server, window_manager::WindowManager},
 };
-#[cfg(not(target_os = "android"))]
-use crate::core::{hotkey::Hotkey, tray::Tray};
 
 pub mod dns;
 pub mod scheme;
@@ -74,11 +74,7 @@ pub fn resolve_setup_async() {
         );
 
         #[cfg(target_os = "android")]
-        let _ = futures::join!(
-            core_init,
-            init_timer(),
-            init_auto_lightweight_boot(),
-        );
+        let _ = futures::join!(core_init, init_timer(), init_auto_lightweight_boot(),);
     });
 }
 

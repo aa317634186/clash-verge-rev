@@ -22,7 +22,11 @@ pub async fn sync_tray_proxy_selection() -> CmdResult<()> {
     }
     #[cfg(target_os = "android")]
     {
-        logging!(info, Type::Cmd, "Tray proxy selection sync skipped on Android");
+        logging!(
+            info,
+            Type::Cmd,
+            "Tray proxy selection sync skipped on Android"
+        );
         Ok(())
     }
 }

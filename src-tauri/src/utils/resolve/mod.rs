@@ -1,13 +1,13 @@
 use anyhow::Result;
 
+#[cfg(not(target_os = "android"))]
+use crate::core::{hotkey::Hotkey, tray::Tray};
 use crate::{
     config::Config,
     core::{
         CoreManager, Timer, handle,
-        hotkey::Hotkey,
         service::{SERVICE_MANAGER, ServiceManager, is_service_ipc_path_exists},
         sysopt,
-        tray::Tray,
     },
     logging, logging_error,
     module::{lightweight::auto_lightweight_boot, signal},
@@ -27,6 +27,7 @@ pub fn resolve_setup_handle() {
 
 pub fn resolve_setup_sync() {
     AsyncHandler::spawn(|| async {
+        #[cfg(not(target_os = "android"))]
         AsyncHandler::spawn_blocking(init_scheme);
         AsyncHandler::spawn_blocking(init_embed_server);
         AsyncHandler::spawn_blocking(init_signal);
@@ -57,11 +58,13 @@ pub fn resolve_setup_async() {
             AsyncHandler::spawn_blocking(init_system_proxy_guard);
         });
 
+        #[cfg(not(target_os = "android"))]
         let tray_init = async {
             init_tray().await;
             refresh_tray_menu().await;
         };
 
+        #[cfg(not(target_os = "android"))]
         let _ = futures::join!(
             core_init,
             tray_init,
@@ -69,6 +72,9 @@ pub fn resolve_setup_async() {
             init_hotkey(),
             init_auto_lightweight_boot(),
         );
+
+        #[cfg(target_os = "android")]
+        let _ = futures::join!(core_init, init_timer(), init_auto_lightweight_boot(),);
     });
 }
 
@@ -89,6 +95,7 @@ pub fn init_handle() {
     handle::Handle::global().init();
 }
 
+#[cfg(not(target_os = "android"))]
 pub(super) fn init_scheme() {
     logging_error!(Type::Setup, init::init_scheme());
 }
@@ -119,6 +126,7 @@ pub(super) async fn init_timer() {
     logging_error!(Type::Setup, Timer::global().init().await);
 }
 
+#[cfg(not(target_os = "android"))]
 pub(super) async fn init_hotkey() {
     logging_error!(Type::Setup, Hotkey::global().init(false).await);
 }
@@ -136,6 +144,7 @@ pub async fn init_work_config() {
     logging_error!(Type::Setup, init::init_config().await);
 }
 
+#[cfg(not(target_os = "android"))]
 pub(super) async fn init_tray() {
     if std::env::var("CLASH_VERGE_DISABLE_TRAY").unwrap_or_default() == "1" {
         return;
@@ -172,6 +181,7 @@ pub(super) fn init_system_proxy_guard() {
     logging_error!(Type::Setup, sysopt::Sysopt::global().init_guard_sysproxy());
 }
 
+#[cfg(not(target_os = "android"))]
 pub(super) async fn refresh_tray_menu() {
     logging_error!(Type::Setup, Tray::global().update_part().await);
 }

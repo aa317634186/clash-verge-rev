@@ -1,6 +1,8 @@
+#[cfg(not(target_os = "android"))]
+use crate::core::tray::Tray;
 use crate::{
     config::Config,
-    core::{handle, timer::Timer, tray::Tray},
+    core::{handle, timer::Timer},
     log_err, logging,
     process::AsyncHandler,
     utils::logging::Type,
@@ -79,6 +81,7 @@ pub fn is_in_lightweight_mode() -> bool {
 }
 
 async fn refresh_lightweight_tray_state() {
+    #[cfg(not(target_os = "android"))]
     if let Err(err) = Tray::global().update_menu().await {
         logging!(warn, Type::Lightweight, "更新托盘轻量模式状态失败: {err}");
     }

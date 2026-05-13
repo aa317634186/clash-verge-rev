@@ -7,7 +7,7 @@ use tokio::time::{Duration, timeout};
 
 #[cfg(target_os = "linux")]
 use anyhow::anyhow;
-#[cfg(not(target_os = "windows"))]
+#[cfg(all(not(target_os = "windows"), not(target_os = "android")))]
 use tokio::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -561,5 +561,17 @@ impl AsyncProxyQuery {
             port,
             bypass: std::env::var("no_proxy").unwrap_or_default(),
         })
+    }
+
+    #[cfg(target_os = "android")]
+    async fn get_auto_proxy_impl() -> Result<AsyncAutoproxy> {
+        // Android: proxy is handled via VPN service, no system auto-proxy
+        Ok(AsyncAutoproxy::default())
+    }
+
+    #[cfg(target_os = "android")]
+    async fn get_system_proxy_impl() -> Result<AsyncSysproxy> {
+        // Android: proxy is handled via VPN service, no system proxy settings
+        Ok(AsyncSysproxy::default())
     }
 }

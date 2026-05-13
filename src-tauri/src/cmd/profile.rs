@@ -1,5 +1,7 @@
 use super::CmdResult;
 use super::StringifyErr;
+#[cfg(not(target_os = "android"))]
+use crate::core::tray::Tray;
 use crate::{
     config::{
         Config, IProfiles, PrfItem, PrfOption,
@@ -9,7 +11,7 @@ use crate::{
         },
         profiles_append_item_safe,
     },
-    core::{CoreManager, handle, timer::Timer, tray::Tray},
+    core::{CoreManager, handle, timer::Timer},
     feat, logging,
     process::AsyncHandler,
     ret_err,
@@ -300,12 +302,15 @@ async fn handle_success(current_value: Option<&String>) -> CmdResult<bool> {
     Config::profiles().await.apply();
     handle::Handle::refresh_clash();
 
-    if let Err(e) = Tray::global().update_tooltip().await {
-        logging!(warn, Type::Cmd, "Warning: 异步更新托盘提示失败: {e}");
-    }
+    #[cfg(not(target_os = "android"))]
+    {
+        if let Err(e) = Tray::global().update_tooltip().await {
+            logging!(warn, Type::Cmd, "Warning: 异步更新托盘提示失败: {e}");
+        }
 
-    if let Err(e) = Tray::global().update_menu().await {
-        logging!(warn, Type::Cmd, "Warning: 异步更新托盘菜单失败: {e}");
+        if let Err(e) = Tray::global().update_menu().await {
+            logging!(warn, Type::Cmd, "Warning: 异步更新托盘菜单失败: {e}");
+        }
     }
 
     if let Err(e) = profiles_save_file_safe().await {

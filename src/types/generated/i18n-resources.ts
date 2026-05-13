@@ -999,6 +999,23 @@ export interface TranslationResources {
         title: string;
       };
       sections: {
+        androidVpn: {
+          autoStart: string;
+          autoStartDesc: string;
+          batteryOptimization: string;
+          batteryOptimizationDesc: string;
+          perAppList: string;
+          perAppListDesc: string;
+          request: string;
+          splitModes: {
+            blacklist: string;
+            disabled: string;
+            whitelist: string;
+          };
+          splitTunneling: string;
+          splitTunnelingDesc: string;
+          title: string;
+        };
         appearance: {
           dark: string;
           light: string;

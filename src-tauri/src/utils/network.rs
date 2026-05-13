@@ -13,6 +13,7 @@ use isahc::{
 };
 use smartstring::alias::String;
 use std::time::{Duration, Instant};
+#[cfg(not(target_os = "android"))]
 use sysproxy::Sysproxy;
 use tauri::Url;
 use tokio::sync::Mutex;
@@ -169,10 +170,17 @@ impl NetworkManager {
                 proxy_scheme.parse::<Uri>().ok()
             }
             ProxyType::System => {
-                if let Ok(p @ Sysproxy { enable: true, .. }) = Sysproxy::get_system_proxy() {
-                    let proxy_scheme = format!("http://{}:{}", p.host, p.port);
-                    proxy_scheme.parse::<Uri>().ok()
-                } else {
+                #[cfg(not(target_os = "android"))]
+                {
+                    if let Ok(p @ Sysproxy { enable: true, .. }) = Sysproxy::get_system_proxy() {
+                        let proxy_scheme = format!("http://{}:{}", p.host, p.port);
+                        proxy_scheme.parse::<Uri>().ok()
+                    } else {
+                        None
+                    }
+                }
+                #[cfg(target_os = "android")]
+                {
                     None
                 }
             }

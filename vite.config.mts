@@ -165,6 +165,8 @@ export default defineConfig({
   },
 
   define: {
-    OS_PLATFORM: `"${process.platform}"`,
+    // Use TAURI_ENV_TARGET_TRIPLE to detect Android builds (set by Tauri CLI).
+    // Falls back to process.platform for desktop builds.
+    OS_PLATFORM: `"${process.env.TAURI_ENV_TARGET_TRIPLE?.includes("android") ? "android" : process.platform}"`,
   },
 });

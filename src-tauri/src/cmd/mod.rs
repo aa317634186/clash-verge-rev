@@ -4,6 +4,8 @@ use smartstring::alias::String;
 pub type CmdResult<T = ()> = Result<T, String>;
 
 // Command modules
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod app;
 pub mod backup;
 pub mod clash;
@@ -22,6 +24,8 @@ pub mod verge;
 pub mod webdav;
 
 // Re-export all command functions for backwards compatibility
+#[cfg(target_os = "android")]
+pub use android::*;
 pub use app::*;
 pub use backup::*;
 pub use clash::*;

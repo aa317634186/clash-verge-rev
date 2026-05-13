@@ -1,7 +1,9 @@
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use crate::{
     cmd,
     config::{Config, PrfItem, PrfOption, profiles::profiles_draft_update_item_safe},
-    core::{CoreManager, handle, tray},
+    core::{CoreManager, handle},
     logging, logging_error,
     utils::logging::Type,
 };
@@ -32,6 +34,7 @@ pub async fn switch_proxy_node(group_name: &str, proxy_name: &str) {
                 proxy_name
             );
             let _ = handle::Handle::app_handle().emit("verge://refresh-proxy-config", ());
+            #[cfg(not(target_os = "android"))]
             let _ = tray::Tray::global().update_menu().await;
             return;
         }
@@ -60,6 +63,7 @@ pub async fn switch_proxy_node(group_name: &str, proxy_name: &str) {
                 group_name,
                 proxy_name
             );
+            #[cfg(not(target_os = "android"))]
             let _ = tray::Tray::global().update_menu().await;
         }
         Err(err) => {

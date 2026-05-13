@@ -1,0 +1,95 @@
+name: Android Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+  HUSKY: 0
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Clone and build mihomo for Android
+        run: |
+          git clone --depth 1 https://github.com/MetaCubeX/mihomo.git /tmp/mihomo
+          chmod +x ./scripts/build-mihomo-android.sh
+          ./scripts/build-mihomo-android.sh /tmp/mihomo
+
+      - name: Initialize Android project
+        run: pnpm tauri android init
+        env:
+          RANLIB: ""
+
+      - name: Build Android APK
+        run: pnpm tauri android build
+        env:
+          RANLIB: ""
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clash-verge-android-apk
+          path: |
+            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          retention-days: 7
+          if-no-files-found: error

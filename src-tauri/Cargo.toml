@@ -42,7 +42,6 @@ tokio = { version = "1.48.0", features = [
 serde = { version = "1.0.228", features = ["derive"] }
 reqwest = { version = "0.12.24", features = ["json", "cookies"] }
 regex = "1.12.2"
-sysproxy = { git = "https://github.com/clash-verge-rev/sysproxy-rs" }
 tauri = { version = "2.9.2", features = [
   "protocol-asset",
   "devtools",
@@ -121,6 +120,13 @@ signal-hook = "0.3.18"
 tauri-plugin-autostart = "2.5.1"
 tauri-plugin-global-shortcut = "2.3.1"
 tauri-plugin-updater = "2.9.0"
+sysproxy = { git = "https://github.com/clash-verge-rev/sysproxy-rs" }
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+android_logger = "0.14"
+ndk-context = "0.1"
+openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
 default = ["custom-protocol"]
@@ -130,6 +136,7 @@ tauri-dev = []
 tokio-trace = ["console-subscriber"]
 clippy = ["tauri/test"]
 tracing = []
+android = []
 
 [[bench]]
 name = "draft_benchmark"

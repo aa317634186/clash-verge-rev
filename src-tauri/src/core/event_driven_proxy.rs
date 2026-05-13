@@ -10,7 +10,37 @@ use crate::process::AsyncHandler;
 use crate::{logging, utils::logging::Type};
 use once_cell::sync::Lazy;
 use smartstring::alias::String;
+#[cfg(not(target_os = "android"))]
 use sysproxy::{Autoproxy, Sysproxy};
+
+/// On Android, sysproxy crate is not available. Define compatible structs.
+#[cfg(target_os = "android")]
+#[derive(Debug, Clone, Default)]
+pub struct Autoproxy {
+    pub enable: bool,
+    pub url: std::string::String,
+}
+
+#[cfg(target_os = "android")]
+#[derive(Debug, Clone)]
+pub struct Sysproxy {
+    pub enable: bool,
+    pub host: std::string::String,
+    pub port: u16,
+    pub bypass: std::string::String,
+}
+
+#[cfg(target_os = "android")]
+impl Default for Sysproxy {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            host: "127.0.0.1".into(),
+            port: 7897,
+            bypass: std::string::String::new(),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum ProxyEvent {
@@ -447,17 +477,24 @@ impl EventDrivenProxyManager {
     }
 
     async fn get_bypass_config() -> String {
-        use crate::constants::bypass;
+        #[cfg(not(target_os = "android"))]
+        {
+            use crate::constants::bypass;
 
-        let verge_config = Config::verge().await;
-        let verge = verge_config.latest_arc();
-        let use_default = verge.use_default_bypass.unwrap_or(true);
-        let custom = verge.system_proxy_bypass.as_deref().unwrap_or("");
+            let verge_config = Config::verge().await;
+            let verge = verge_config.latest_arc();
+            let use_default = verge.use_default_bypass.unwrap_or(true);
+            let custom = verge.system_proxy_bypass.as_deref().unwrap_or("");
 
-        match (use_default, custom.is_empty()) {
-            (_, true) => bypass::DEFAULT.into(),
-            (true, false) => format!("{},{}", bypass::DEFAULT, custom).into(),
-            (false, false) => custom.into(),
+            match (use_default, custom.is_empty()) {
+                (_, true) => bypass::DEFAULT.into(),
+                (true, false) => format!("{},{}", bypass::DEFAULT, custom).into(),
+                (false, false) => custom.into(),
+            }
+        }
+        #[cfg(target_os = "android")]
+        {
+            String::new()
         }
     }
 
@@ -471,7 +508,7 @@ impl EventDrivenProxyManager {
     }
 
     #[allow(clippy::unused_async)]
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(all(not(target_os = "windows"), not(target_os = "android")))]
     async fn restore_pac_proxy(expected_url: &str) -> Result<(), anyhow::Error> {
         {
             let new_autoproxy = Autoproxy {
@@ -485,6 +522,13 @@ impl EventDrivenProxyManager {
         }
     }
 
+    #[allow(clippy::unused_async)]
+    #[cfg(target_os = "android")]
+    async fn restore_pac_proxy(_expected_url: &str) -> Result<(), anyhow::Error> {
+        // On Android, proxy is handled via VPN service
+        Ok(())
+    }
+
     #[cfg(target_os = "windows")]
     async fn restore_sys_proxy(expected: &Sysproxy) -> Result<(), anyhow::Error> {
         if handle::Handle::global().is_exiting() {
@@ -496,7 +540,7 @@ impl EventDrivenProxyManager {
     }
 
     #[allow(clippy::unused_async)]
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(all(not(target_os = "windows"), not(target_os = "android")))]
     async fn restore_sys_proxy(expected: &Sysproxy) -> Result<(), anyhow::Error> {
         {
             // logging_error!(Type::System, true, expected.set_system_proxy());
@@ -504,6 +548,13 @@ impl EventDrivenProxyManager {
                 .set_system_proxy()
                 .map_err(|e| anyhow::anyhow!("Failed to set system proxy: {}", e))
         }
+    }
+
+    #[allow(clippy::unused_async)]
+    #[cfg(target_os = "android")]
+    async fn restore_sys_proxy(_expected: &Sysproxy) -> Result<(), anyhow::Error> {
+        // On Android, proxy is handled via VPN service
+        Ok(())
     }
 
     #[cfg(target_os = "windows")]

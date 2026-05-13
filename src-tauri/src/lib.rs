@@ -10,7 +10,10 @@ mod feat;
 mod module;
 mod process;
 pub mod utils;
+#[cfg(not(target_os = "android"))]
 use crate::constants::files;
+#[cfg(not(target_os = "android"))]
+use crate::core::hotkey;
 #[cfg(target_os = "macos")]
 use crate::module::lightweight;
 #[cfg(target_os = "linux")]
@@ -18,17 +21,19 @@ use crate::utils::linux;
 #[cfg(target_os = "macos")]
 use crate::utils::window_manager::WindowManager;
 use crate::{
-    core::{EventDrivenProxyManager, handle, hotkey},
+    core::{EventDrivenProxyManager, handle},
     process::AsyncHandler,
     utils::{resolve, server},
 };
 use anyhow::Result;
+#[cfg(not(target_os = "android"))]
 use config::Config;
 use once_cell::sync::OnceCell;
 use rust_i18n::i18n;
 use tauri::{AppHandle, Manager};
 #[cfg(target_os = "macos")]
 use tauri_plugin_autostart::MacosLauncher;
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_deep_link::DeepLinkExt;
 use utils::logging::Type;
 
@@ -53,14 +58,11 @@ mod app_init {
         #[allow(unused_mut)]
         let mut builder = builder
             .plugin(tauri_plugin_notification::init())
-            .plugin(tauri_plugin_updater::Builder::new().build())
             .plugin(tauri_plugin_clipboard_manager::init())
             .plugin(tauri_plugin_process::init())
-            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
             .plugin(tauri_plugin_fs::init())
             .plugin(tauri_plugin_dialog::init())
             .plugin(tauri_plugin_shell::init())
-            .plugin(tauri_plugin_deep_link::init())
             .plugin(tauri_plugin_http::init())
             .plugin(
                 tauri_plugin_mihomo::Builder::new()
@@ -77,6 +79,15 @@ mod app_init {
                     .build(),
             );
 
+        // Desktop-only plugins
+        #[cfg(not(target_os = "android"))]
+        {
+            builder = builder
+                .plugin(tauri_plugin_updater::Builder::new().build())
+                .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+                .plugin(tauri_plugin_deep_link::init());
+        }
+
         // Devtools plugin only in debug mode with feature tauri-dev
         // to avoid duplicated registering of logger since the devtools plugin also registers a logger
         #[cfg(all(debug_assertions, not(feature = "tokio-trace"), feature = "tauri-dev"))]
@@ -87,6 +98,7 @@ mod app_init {
     }
 
     /// Setup deep link handling
+    #[cfg(not(target_os = "android"))]
     pub fn setup_deep_links(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
         {
@@ -109,6 +121,7 @@ mod app_init {
     }
 
     /// Setup autostart plugin
+    #[cfg(not(target_os = "android"))]
     pub fn setup_autostart(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(target_os = "macos")]
         let mut auto_start_plugin_builder = tauri_plugin_autostart::Builder::new();
@@ -126,6 +139,7 @@ mod app_init {
     }
 
     /// Setup window state management
+    #[cfg(not(target_os = "android"))]
     pub fn setup_window_state(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         logging!(info, Type::Setup, "初始化窗口状态管理...");
         let window_state_plugin = tauri_plugin_window_state::Builder::new()
@@ -138,96 +152,195 @@ mod app_init {
 
     pub fn generate_handlers()
     -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
-        tauri::generate_handler![
-            cmd::get_sys_proxy,
-            cmd::get_auto_proxy,
-            cmd::open_app_dir,
-            cmd::open_logs_dir,
-            cmd::open_web_url,
-            cmd::open_core_dir,
-            cmd::open_app_log,
-            cmd::open_core_log,
-            cmd::get_portable_flag,
-            cmd::get_network_interfaces,
-            cmd::get_system_hostname,
-            cmd::restart_app,
-            cmd::start_core,
-            cmd::stop_core,
-            cmd::restart_core,
-            cmd::notify_ui_ready,
-            cmd::update_ui_stage,
-            cmd::get_running_mode,
-            cmd::get_app_uptime,
-            cmd::get_auto_launch_status,
-            cmd::is_admin,
-            cmd::entry_lightweight_mode,
-            cmd::exit_lightweight_mode,
-            cmd::install_service,
-            cmd::uninstall_service,
-            cmd::reinstall_service,
-            cmd::repair_service,
-            cmd::is_service_available,
-            cmd::get_clash_info,
-            cmd::patch_clash_config,
-            cmd::patch_clash_mode,
-            cmd::change_clash_core,
-            cmd::get_runtime_config,
-            cmd::get_runtime_yaml,
-            cmd::get_runtime_exists,
-            cmd::get_runtime_logs,
-            cmd::get_runtime_proxy_chain_config,
-            cmd::update_proxy_chain_config_in_runtime,
-            cmd::invoke_uwp_tool,
-            cmd::copy_clash_env,
-            cmd::sync_tray_proxy_selection,
-            cmd::save_dns_config,
-            cmd::apply_dns_config,
-            cmd::check_dns_config_exists,
-            cmd::get_dns_config_content,
-            cmd::validate_dns_config,
-            cmd::get_clash_logs,
-            cmd::get_verge_config,
-            cmd::patch_verge_config,
-            cmd::test_delay,
-            cmd::get_app_dir,
-            cmd::copy_icon_file,
-            cmd::download_icon_cache,
-            cmd::open_devtools,
-            cmd::exit_app,
-            cmd::get_network_interfaces_info,
-            cmd::get_profiles,
-            cmd::enhance_profiles,
-            cmd::patch_profiles_config,
-            cmd::view_profile,
-            cmd::patch_profile,
-            cmd::create_profile,
-            cmd::import_profile,
-            cmd::reorder_profile,
-            cmd::update_profile,
-            cmd::delete_profile,
-            cmd::read_profile_file,
-            cmd::save_profile_file,
-            cmd::get_next_update_time,
-            cmd::script_validate_notice,
-            cmd::validate_script_file,
-            cmd::create_local_backup,
-            cmd::list_local_backup,
-            cmd::delete_local_backup,
-            cmd::restore_local_backup,
-            cmd::export_local_backup,
-            cmd::create_webdav_backup,
-            cmd::save_webdav_config,
-            cmd::list_webdav_backup,
-            cmd::delete_webdav_backup,
-            cmd::restore_webdav_backup,
-            cmd::export_diagnostic_info,
-            cmd::get_system_info,
-            cmd::get_unlock_items,
-            cmd::check_media_unlock,
-        ]
+        // NOTE: Desktop and Android handler lists share ~50 identical entries but must be
+        // duplicated due to Rust's cfg macro constraints (generate_handler! is a single
+        // macro invocation that cannot be split). Future refactoring could use a proc macro
+        // to compose shared + platform-specific handlers.
+        #[cfg(not(target_os = "android"))]
+        {
+            tauri::generate_handler![
+                cmd::get_sys_proxy,
+                cmd::get_auto_proxy,
+                cmd::open_app_dir,
+                cmd::open_logs_dir,
+                cmd::open_web_url,
+                cmd::open_core_dir,
+                cmd::open_app_log,
+                cmd::open_core_log,
+                cmd::get_portable_flag,
+                cmd::get_network_interfaces,
+                cmd::get_system_hostname,
+                cmd::restart_app,
+                cmd::start_core,
+                cmd::stop_core,
+                cmd::restart_core,
+                cmd::notify_ui_ready,
+                cmd::update_ui_stage,
+                cmd::get_running_mode,
+                cmd::get_app_uptime,
+                cmd::get_auto_launch_status,
+                cmd::is_admin,
+                cmd::entry_lightweight_mode,
+                cmd::exit_lightweight_mode,
+                cmd::install_service,
+                cmd::uninstall_service,
+                cmd::reinstall_service,
+                cmd::repair_service,
+                cmd::is_service_available,
+                cmd::get_clash_info,
+                cmd::patch_clash_config,
+                cmd::patch_clash_mode,
+                cmd::change_clash_core,
+                cmd::get_runtime_config,
+                cmd::get_runtime_yaml,
+                cmd::get_runtime_exists,
+                cmd::get_runtime_logs,
+                cmd::get_runtime_proxy_chain_config,
+                cmd::update_proxy_chain_config_in_runtime,
+                cmd::invoke_uwp_tool,
+                cmd::copy_clash_env,
+                cmd::sync_tray_proxy_selection,
+                cmd::save_dns_config,
+                cmd::apply_dns_config,
+                cmd::check_dns_config_exists,
+                cmd::get_dns_config_content,
+                cmd::validate_dns_config,
+                cmd::get_clash_logs,
+                cmd::get_verge_config,
+                cmd::patch_verge_config,
+                cmd::test_delay,
+                cmd::get_app_dir,
+                cmd::copy_icon_file,
+                cmd::download_icon_cache,
+                cmd::open_devtools,
+                cmd::exit_app,
+                cmd::get_network_interfaces_info,
+                cmd::get_profiles,
+                cmd::enhance_profiles,
+                cmd::patch_profiles_config,
+                cmd::view_profile,
+                cmd::patch_profile,
+                cmd::create_profile,
+                cmd::import_profile,
+                cmd::reorder_profile,
+                cmd::update_profile,
+                cmd::delete_profile,
+                cmd::read_profile_file,
+                cmd::save_profile_file,
+                cmd::get_next_update_time,
+                cmd::script_validate_notice,
+                cmd::validate_script_file,
+                cmd::create_local_backup,
+                cmd::list_local_backup,
+                cmd::delete_local_backup,
+                cmd::restore_local_backup,
+                cmd::export_local_backup,
+                cmd::create_webdav_backup,
+                cmd::save_webdav_config,
+                cmd::list_webdav_backup,
+                cmd::delete_webdav_backup,
+                cmd::restore_webdav_backup,
+                cmd::export_diagnostic_info,
+                cmd::get_system_info,
+                cmd::get_unlock_items,
+                cmd::check_media_unlock,
+            ]
+        }
+        #[cfg(target_os = "android")]
+        {
+            tauri::generate_handler![
+                cmd::get_sys_proxy,
+                cmd::get_auto_proxy,
+                cmd::open_app_dir,
+                cmd::open_logs_dir,
+                cmd::open_web_url,
+                cmd::open_core_dir,
+                cmd::open_app_log,
+                cmd::open_core_log,
+                cmd::get_portable_flag,
+                cmd::get_network_interfaces,
+                cmd::get_system_hostname,
+                cmd::restart_app,
+                cmd::start_core,
+                cmd::stop_core,
+                cmd::restart_core,
+                cmd::notify_ui_ready,
+                cmd::update_ui_stage,
+                cmd::get_running_mode,
+                cmd::get_app_uptime,
+                cmd::get_auto_launch_status,
+                cmd::is_admin,
+                cmd::get_clash_info,
+                cmd::patch_clash_config,
+                cmd::patch_clash_mode,
+                cmd::change_clash_core,
+                cmd::get_runtime_config,
+                cmd::get_runtime_yaml,
+                cmd::get_runtime_exists,
+                cmd::get_runtime_logs,
+                cmd::get_runtime_proxy_chain_config,
+                cmd::update_proxy_chain_config_in_runtime,
+                cmd::copy_clash_env,
+                cmd::sync_tray_proxy_selection,
+                cmd::save_dns_config,
+                cmd::apply_dns_config,
+                cmd::check_dns_config_exists,
+                cmd::get_dns_config_content,
+                cmd::validate_dns_config,
+                cmd::get_clash_logs,
+                cmd::get_verge_config,
+                cmd::patch_verge_config,
+                cmd::test_delay,
+                cmd::get_app_dir,
+                cmd::copy_icon_file,
+                cmd::download_icon_cache,
+                cmd::exit_app,
+                cmd::get_network_interfaces_info,
+                cmd::get_profiles,
+                cmd::enhance_profiles,
+                cmd::patch_profiles_config,
+                cmd::view_profile,
+                cmd::patch_profile,
+                cmd::create_profile,
+                cmd::import_profile,
+                cmd::reorder_profile,
+                cmd::update_profile,
+                cmd::delete_profile,
+                cmd::read_profile_file,
+                cmd::save_profile_file,
+                cmd::get_next_update_time,
+                cmd::script_validate_notice,
+                cmd::validate_script_file,
+                cmd::create_local_backup,
+                cmd::list_local_backup,
+                cmd::delete_local_backup,
+                cmd::restore_local_backup,
+                cmd::export_local_backup,
+                cmd::create_webdav_backup,
+                cmd::save_webdav_config,
+                cmd::list_webdav_backup,
+                cmd::delete_webdav_backup,
+                cmd::restore_webdav_backup,
+                cmd::export_diagnostic_info,
+                cmd::get_system_info,
+                cmd::get_unlock_items,
+                cmd::check_media_unlock,
+                // Android-specific VPN commands
+                cmd::start_vpn,
+                cmd::stop_vpn,
+                cmd::get_vpn_status,
+                cmd::request_vpn_permission,
+                cmd::get_split_tunnel_apps,
+                cmd::set_split_tunnel_apps,
+                cmd::set_split_tunnel_mode,
+                cmd::request_battery_optimization_exclusion,
+                cmd::set_auto_start_on_boot,
+            ]
+        }
     }
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if app_init::init_singleton_check().is_err() {
         return;
@@ -247,14 +360,17 @@ pub fn run() {
                 .set(app.app_handle().clone())
                 .expect("failed to set global app handle");
 
+            #[cfg(not(target_os = "android"))]
             if let Err(e) = app_init::setup_autostart(app) {
                 logging!(error, Type::Setup, "Failed to setup autostart: {}", e);
             }
 
+            #[cfg(not(target_os = "android"))]
             if let Err(e) = app_init::setup_deep_links(app) {
                 logging!(error, Type::Setup, "Failed to setup deep links: {}", e);
             }
 
+            #[cfg(not(target_os = "android"))]
             if let Err(e) = app_init::setup_window_state(app) {
                 logging!(error, Type::Setup, "Failed to setup window state: {}", e);
             }
@@ -312,6 +428,7 @@ pub fn run() {
 
             if let tauri::WindowEvent::CloseRequested { api, .. } = api {
                 api.prevent_close();
+                #[cfg(not(target_os = "android"))]
                 if let Some(window) = core::handle::Handle::get_window() {
                     let _ = window.hide();
                 }
@@ -320,6 +437,7 @@ pub fn run() {
 
         pub fn handle_window_focus(focused: bool) {
             AsyncHandler::spawn(move || async move {
+                #[cfg(not(target_os = "android"))]
                 let is_enable_global_hotkey = Config::verge()
                     .await
                     .data_arc()
@@ -337,7 +455,10 @@ pub fn run() {
                             .register_system_hotkey(SystemHotkey::CmdW)
                             .await;
                     }
-                    let _ = hotkey::Hotkey::global().init(true).await;
+                    #[cfg(not(target_os = "android"))]
+                    {
+                        let _ = hotkey::Hotkey::global().init(true).await;
+                    }
                     return;
                 }
 
@@ -348,6 +469,7 @@ pub fn run() {
                     let _ = hotkey::Hotkey::global().unregister_system_hotkey(SystemHotkey::CmdW);
                 }
 
+                #[cfg(not(target_os = "android"))]
                 if !is_enable_global_hotkey {
                     let _ = hotkey::Hotkey::global().reset();
                 }

@@ -152,6 +152,7 @@ impl Timer {
     }
 
     /// 每 3 秒更新系统托盘菜单，总共执行 3 次
+    #[cfg(not(target_os = "android"))]
     pub fn add_update_tray_menu_task(&self) -> Result<()> {
         let tid = self.timer_count.fetch_add(1, Ordering::SeqCst);
         let task = TaskBuilder::default()
@@ -167,6 +168,12 @@ impl Timer {
             .write()
             .add_task(task)
             .context("failed to add update tray menu timer task")?;
+        Ok(())
+    }
+
+    /// No-op on Android: tray is not available
+    #[cfg(target_os = "android")]
+    pub fn add_update_tray_menu_task(&self) -> Result<()> {
         Ok(())
     }
 

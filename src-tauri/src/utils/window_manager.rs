@@ -106,27 +106,38 @@ pub struct WindowManager;
 
 impl WindowManager {
     pub fn get_main_window_state() -> WindowState {
-        match Self::get_main_window() {
-            Some(window) => {
-                let is_minimized = window.is_minimized().unwrap_or(false);
-                let is_visible = window.is_visible().unwrap_or(false);
-                let is_focused = window.is_focused().unwrap_or(false);
+        #[cfg(not(target_os = "android"))]
+        {
+            match Self::get_main_window() {
+                Some(window) => {
+                    let is_minimized = window.is_minimized().unwrap_or(false);
+                    let is_visible = window.is_visible().unwrap_or(false);
+                    let is_focused = window.is_focused().unwrap_or(false);
 
-                if is_minimized {
-                    return WindowState::Minimized;
-                }
+                    if is_minimized {
+                        return WindowState::Minimized;
+                    }
 
-                if !is_visible {
-                    return WindowState::Hidden;
-                }
+                    if !is_visible {
+                        return WindowState::Hidden;
+                    }
 
-                if is_focused {
-                    WindowState::VisibleFocused
-                } else {
-                    WindowState::VisibleUnfocused
+                    if is_focused {
+                        WindowState::VisibleFocused
+                    } else {
+                        WindowState::VisibleUnfocused
+                    }
                 }
+                None => WindowState::NotExist,
             }
-            None => WindowState::NotExist,
+        }
+        #[cfg(target_os = "android")]
+        {
+            // On Android, the window is always considered visible and focused
+            match Self::get_main_window() {
+                Some(_) => WindowState::VisibleFocused,
+                None => WindowState::NotExist,
+            }
         }
     }
 
@@ -223,21 +234,28 @@ impl WindowManager {
 
     // 隐藏主窗口
     fn hide_main_window() -> WindowOperationResult {
-        logging!(info, Type::Window, "窗口可见，将隐藏窗口");
-        if let Some(window) = Self::get_main_window() {
-            match window.hide() {
-                Ok(_) => {
-                    logging!(info, Type::Window, "窗口已成功隐藏");
-                    WindowOperationResult::Hidden
+        #[cfg(not(target_os = "android"))]
+        {
+            logging!(info, Type::Window, "窗口可见，将隐藏窗口");
+            if let Some(window) = Self::get_main_window() {
+                match window.hide() {
+                    Ok(_) => {
+                        logging!(info, Type::Window, "窗口已成功隐藏");
+                        WindowOperationResult::Hidden
+                    }
+                    Err(e) => {
+                        logging!(warn, Type::Window, "隐藏窗口失败: {}", e);
+                        WindowOperationResult::Failed
+                    }
                 }
-                Err(e) => {
-                    logging!(warn, Type::Window, "隐藏窗口失败: {}", e);
-                    WindowOperationResult::Failed
-                }
+            } else {
+                logging!(warn, Type::Window, "无法获取窗口实例");
+                WindowOperationResult::Failed
             }
-        } else {
-            logging!(warn, Type::Window, "无法获取窗口实例");
-            WindowOperationResult::Failed
+        }
+        #[cfg(target_os = "android")]
+        {
+            WindowOperationResult::NoAction
         }
     }
 
@@ -254,78 +272,107 @@ impl WindowManager {
 
     /// 激活窗口（取消最小化、显示、设置焦点）
     fn activate_window(window: &WebviewWindow<Wry>) -> WindowOperationResult {
-        logging!(info, Type::Window, "开始激活窗口");
+        #[cfg(not(target_os = "android"))]
+        {
+            logging!(info, Type::Window, "开始激活窗口");
 
-        let mut operations_successful = true;
+            let mut operations_successful = true;
 
-        // 1. 如果窗口最小化，先取消最小化
-        if window.is_minimized().unwrap_or(false) {
-            logging!(info, Type::Window, "窗口已最小化，正在取消最小化");
-            if let Err(e) = window.unminimize() {
-                logging!(warn, Type::Window, "取消最小化失败: {}", e);
+            // 1. 如果窗口最小化，先取消最小化
+            if window.is_minimized().unwrap_or(false) {
+                logging!(info, Type::Window, "窗口已最小化，正在取消最小化");
+                if let Err(e) = window.unminimize() {
+                    logging!(warn, Type::Window, "取消最小化失败: {}", e);
+                    operations_successful = false;
+                }
+            }
+
+            // 2. 显示窗口
+            if let Err(e) = window.show() {
+                logging!(warn, Type::Window, "显示窗口失败: {}", e);
                 operations_successful = false;
             }
-        }
 
-        // 2. 显示窗口
-        if let Err(e) = window.show() {
-            logging!(warn, Type::Window, "显示窗口失败: {}", e);
-            operations_successful = false;
-        }
-
-        // 3. 设置焦点
-        if let Err(e) = window.set_focus() {
-            logging!(warn, Type::Window, "设置窗口焦点失败: {}", e);
-            operations_successful = false;
-        }
-
-        // 4. 平台特定的激活策略
-        #[cfg(target_os = "macos")]
-        {
-            logging!(info, Type::Window, "应用 macOS 特定的激活策略");
-            handle::Handle::global().set_activation_policy_regular();
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            // Windows 尝试额外的激活方法
-            if let Err(e) = window.set_always_on_top(true) {
-                logging!(debug, Type::Window, "设置置顶失败（非关键错误）: {}", e);
+            // 3. 设置焦点
+            if let Err(e) = window.set_focus() {
+                logging!(warn, Type::Window, "设置窗口焦点失败: {}", e);
+                operations_successful = false;
             }
-            // 立即取消置顶
-            if let Err(e) = window.set_always_on_top(false) {
-                logging!(debug, Type::Window, "取消置顶失败（非关键错误）: {}", e);
+
+            // 4. 平台特定的激活策略
+            #[cfg(target_os = "macos")]
+            {
+                logging!(info, Type::Window, "应用 macOS 特定的激活策略");
+                handle::Handle::global().set_activation_policy_regular();
+            }
+
+            #[cfg(target_os = "windows")]
+            {
+                // Windows 尝试额外的激活方法
+                if let Err(e) = window.set_always_on_top(true) {
+                    logging!(debug, Type::Window, "设置置顶失败（非关键错误）: {}", e);
+                }
+                // 立即取消置顶
+                if let Err(e) = window.set_always_on_top(false) {
+                    logging!(debug, Type::Window, "取消置顶失败（非关键错误）: {}", e);
+                }
+            }
+
+            if operations_successful {
+                logging!(info, Type::Window, "窗口激活成功");
+                WindowOperationResult::Shown
+            } else {
+                logging!(warn, Type::Window, "窗口激活部分失败");
+                WindowOperationResult::Failed
             }
         }
-
-        if operations_successful {
-            logging!(info, Type::Window, "窗口激活成功");
-            WindowOperationResult::Shown
-        } else {
-            logging!(warn, Type::Window, "窗口激活部分失败");
-            WindowOperationResult::Failed
+        #[cfg(target_os = "android")]
+        {
+            let _ = window;
+            WindowOperationResult::NoAction
         }
     }
 
     /// 检查窗口是否可见
     pub fn is_main_window_visible() -> bool {
-        Self::get_main_window()
-            .map(|window| window.is_visible().unwrap_or(false))
-            .unwrap_or(false)
+        #[cfg(not(target_os = "android"))]
+        {
+            Self::get_main_window()
+                .map(|window| window.is_visible().unwrap_or(false))
+                .unwrap_or(false)
+        }
+        #[cfg(target_os = "android")]
+        {
+            Self::get_main_window().is_some()
+        }
     }
 
     /// 检查窗口是否有焦点
     pub fn is_main_window_focused() -> bool {
-        Self::get_main_window()
-            .map(|window| window.is_focused().unwrap_or(false))
-            .unwrap_or(false)
+        #[cfg(not(target_os = "android"))]
+        {
+            Self::get_main_window()
+                .map(|window| window.is_focused().unwrap_or(false))
+                .unwrap_or(false)
+        }
+        #[cfg(target_os = "android")]
+        {
+            Self::get_main_window().is_some()
+        }
     }
 
     /// 检查窗口是否最小化
     pub fn is_main_window_minimized() -> bool {
-        Self::get_main_window()
-            .map(|window| window.is_minimized().unwrap_or(false))
-            .unwrap_or(false)
+        #[cfg(not(target_os = "android"))]
+        {
+            Self::get_main_window()
+                .map(|window| window.is_minimized().unwrap_or(false))
+                .unwrap_or(false)
+        }
+        #[cfg(target_os = "android")]
+        {
+            false
+        }
     }
 
     /// 创建新窗口,防抖避免重复调用
@@ -364,17 +411,24 @@ impl WindowManager {
 
     /// 摧毁窗口
     pub fn destroy_main_window() -> WindowOperationResult {
-        if let Some(window) = Self::get_main_window() {
-            let _ = window.destroy();
-            logging!(info, Type::Window, "窗口已摧毁");
-            #[cfg(target_os = "macos")]
-            {
-                logging!(info, Type::Window, "应用 macOS 特定的激活策略");
-                handle::Handle::global().set_activation_policy_accessory();
+        #[cfg(not(target_os = "android"))]
+        {
+            if let Some(window) = Self::get_main_window() {
+                let _ = window.destroy();
+                logging!(info, Type::Window, "窗口已摧毁");
+                #[cfg(target_os = "macos")]
+                {
+                    logging!(info, Type::Window, "应用 macOS 特定的激活策略");
+                    handle::Handle::global().set_activation_policy_accessory();
+                }
+                return WindowOperationResult::Destroyed;
             }
-            return WindowOperationResult::Destroyed;
+            WindowOperationResult::Failed
         }
-        WindowOperationResult::Failed
+        #[cfg(target_os = "android")]
+        {
+            WindowOperationResult::NoAction
+        }
     }
 
     /// 获取详细的窗口状态信息

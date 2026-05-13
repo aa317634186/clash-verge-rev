@@ -46,6 +46,7 @@ import { NoticeManager } from "@/components/base/NoticeManager";
 import { WindowControls } from "@/components/controller/window-controller";
 import { LayoutItem } from "@/components/layout/layout-item";
 import { LayoutTraffic } from "@/components/layout/layout-traffic";
+import MobileNavBar from "@/components/layout/mobile-nav-bar";
 import { UpdateButton } from "@/components/layout/update-button";
 import { useCustomTheme } from "@/components/layout/use-custom-theme";
 import { useI18n } from "@/hooks/use-i18n";
@@ -53,6 +54,7 @@ import { useVerge } from "@/hooks/use-verge";
 import { useWindowDecorations } from "@/hooks/use-window";
 import { useThemeMode } from "@/services/states";
 import getSystem from "@/utils/get-system";
+import { isMobile } from "@/utils/platform";
 
 import { handleNoticeMessage } from "./_layout/notificationHandlers";
 import { useAppInitialization } from "./_layout/useAppInitialization";
@@ -160,6 +162,7 @@ const SortableNavMenuItem = ({ item, label }: SortableNavMenuItemProps) => {
 dayjs.extend(relativeTime);
 
 const OS = getSystem();
+const IS_MOBILE = isMobile();
 
 const Layout = () => {
   const mode = useThemeMode();
@@ -361,7 +364,7 @@ const Layout = () => {
         <Paper
           square
           elevation={0}
-          className={`${OS} layout`}
+          className={`${OS} ${IS_MOBILE ? "mobile" : ""} layout`}
           style={{
             borderTopLeftRadius: "0px",
             borderTopRightRadius: "0px",
@@ -389,141 +392,143 @@ const Layout = () => {
           ]}
         >
           {/* Custom titlebar - rendered only when decorated is false, memoized for performance */}
-          {customTitlebar}
+          {!IS_MOBILE && customTitlebar}
 
           <div className="layout-content">
-            <div className="layout-content__left">
-              <div className="the-logo" data-tauri-drag-region="false">
-                <div
-                  data-tauri-drag-region="true"
-                  style={{
-                    height: "27px",
-                    display: "flex",
-                    justifyContent: "space-between",
+            {!IS_MOBILE && (
+              <div className="layout-content__left">
+                <div className="the-logo" data-tauri-drag-region="false">
+                  <div
+                    data-tauri-drag-region="true"
+                    style={{
+                      height: "27px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <SvgIcon
+                      component={isDark ? iconDark : iconLight}
+                      style={{
+                        height: "36px",
+                        width: "36px",
+                        marginTop: "-3px",
+                        marginRight: "5px",
+                        marginLeft: "-3px",
+                      }}
+                      inheritViewBox
+                    />
+                    <LogoSvg fill={isDark ? "white" : "black"} />
+                  </div>
+                  <UpdateButton className="the-newbtn" />
+                </div>
+
+                {menuUnlocked && (
+                  <Box
+                    sx={(theme) => ({
+                      px: 1.5,
+                      py: 0.75,
+                      mx: "auto",
+                      mb: 1,
+                      maxWidth: 250,
+                      borderRadius: 1.5,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      textAlign: "center",
+                      color: theme.palette.warning.contrastText,
+                      bgcolor:
+                        theme.palette.mode === "light"
+                          ? theme.palette.warning.main
+                          : theme.palette.warning.dark,
+                    })}
+                  >
+                    {t("layout.components.navigation.menu.reorderMode")}
+                  </Box>
+                )}
+
+                {menuUnlocked ? (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleMenuDragEnd}
+                  >
+                    <SortableContext items={menuOrder}>
+                      <List
+                        className="the-menu"
+                        onContextMenu={handleMenuContextMenu}
+                      >
+                        {menuOrder.map((path) => {
+                          const item = navItemMap.get(path);
+                          if (!item) {
+                            return null;
+                          }
+                          return (
+                            <SortableNavMenuItem
+                              key={item.path}
+                              item={item}
+                              label={t(item.label)}
+                            />
+                          );
+                        })}
+                      </List>
+                    </SortableContext>
+                  </DndContext>
+                ) : (
+                  <List
+                    className="the-menu"
+                    onContextMenu={handleMenuContextMenu}
+                  >
+                    {menuOrder.map((path) => {
+                      const item = navItemMap.get(path);
+                      if (!item) {
+                        return null;
+                      }
+                      return (
+                        <LayoutItem
+                          key={item.path}
+                          to={item.path}
+                          icon={item.icon}
+                        >
+                          {t(item.label)}
+                        </LayoutItem>
+                      );
+                    })}
+                  </List>
+                )}
+
+                <Menu
+                  open={Boolean(menuContextPosition)}
+                  onClose={handleMenuContextClose}
+                  anchorReference="anchorPosition"
+                  anchorPosition={
+                    menuContextPosition
+                      ? {
+                          top: menuContextPosition.top,
+                          left: menuContextPosition.left,
+                        }
+                      : undefined
+                  }
+                  transitionDuration={200}
+                  slotProps={{
+                    list: {
+                      sx: { py: 0.5 },
+                    },
                   }}
                 >
-                  <SvgIcon
-                    component={isDark ? iconDark : iconLight}
-                    style={{
-                      height: "36px",
-                      width: "36px",
-                      marginTop: "-3px",
-                      marginRight: "5px",
-                      marginLeft: "-3px",
-                    }}
-                    inheritViewBox
-                  />
-                  <LogoSvg fill={isDark ? "white" : "black"} />
+                  <MenuItem
+                    onClick={menuUnlocked ? handleLockMenu : handleUnlockMenu}
+                    dense
+                  >
+                    {menuUnlocked
+                      ? t("layout.components.navigation.menu.lock")
+                      : t("layout.components.navigation.menu.unlock")}
+                  </MenuItem>
+                </Menu>
+
+                <div className="the-traffic">
+                  <LayoutTraffic />
                 </div>
-                <UpdateButton className="the-newbtn" />
               </div>
-
-              {menuUnlocked && (
-                <Box
-                  sx={(theme) => ({
-                    px: 1.5,
-                    py: 0.75,
-                    mx: "auto",
-                    mb: 1,
-                    maxWidth: 250,
-                    borderRadius: 1.5,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    textAlign: "center",
-                    color: theme.palette.warning.contrastText,
-                    bgcolor:
-                      theme.palette.mode === "light"
-                        ? theme.palette.warning.main
-                        : theme.palette.warning.dark,
-                  })}
-                >
-                  {t("layout.components.navigation.menu.reorderMode")}
-                </Box>
-              )}
-
-              {menuUnlocked ? (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleMenuDragEnd}
-                >
-                  <SortableContext items={menuOrder}>
-                    <List
-                      className="the-menu"
-                      onContextMenu={handleMenuContextMenu}
-                    >
-                      {menuOrder.map((path) => {
-                        const item = navItemMap.get(path);
-                        if (!item) {
-                          return null;
-                        }
-                        return (
-                          <SortableNavMenuItem
-                            key={item.path}
-                            item={item}
-                            label={t(item.label)}
-                          />
-                        );
-                      })}
-                    </List>
-                  </SortableContext>
-                </DndContext>
-              ) : (
-                <List
-                  className="the-menu"
-                  onContextMenu={handleMenuContextMenu}
-                >
-                  {menuOrder.map((path) => {
-                    const item = navItemMap.get(path);
-                    if (!item) {
-                      return null;
-                    }
-                    return (
-                      <LayoutItem
-                        key={item.path}
-                        to={item.path}
-                        icon={item.icon}
-                      >
-                        {t(item.label)}
-                      </LayoutItem>
-                    );
-                  })}
-                </List>
-              )}
-
-              <Menu
-                open={Boolean(menuContextPosition)}
-                onClose={handleMenuContextClose}
-                anchorReference="anchorPosition"
-                anchorPosition={
-                  menuContextPosition
-                    ? {
-                        top: menuContextPosition.top,
-                        left: menuContextPosition.left,
-                      }
-                    : undefined
-                }
-                transitionDuration={200}
-                slotProps={{
-                  list: {
-                    sx: { py: 0.5 },
-                  },
-                }}
-              >
-                <MenuItem
-                  onClick={menuUnlocked ? handleLockMenu : handleUnlockMenu}
-                  dense
-                >
-                  {menuUnlocked
-                    ? t("layout.components.navigation.menu.lock")
-                    : t("layout.components.navigation.menu.unlock")}
-                </MenuItem>
-              </Menu>
-
-              <div className="the-traffic">
-                <LayoutTraffic />
-              </div>
-            </div>
+            )}
 
             <div className="layout-content__right">
               <div className="the-bar"></div>
@@ -534,6 +539,8 @@ const Layout = () => {
               </div>
             </div>
           </div>
+
+          {IS_MOBILE && <MobileNavBar />}
         </Paper>
       </ThemeProvider>
     </SWRConfig>

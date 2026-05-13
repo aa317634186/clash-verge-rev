@@ -1,9 +1,10 @@
 use crate::{
     config::Config,
-    core::tray,
     logging, logging_error,
     utils::{dirs, init::service_writer_config, logging::Type},
 };
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use anyhow::{Context, Result, bail};
 use clash_verge_service_ipc::CoreConfig;
 use compact_str::CompactString;
@@ -539,6 +540,7 @@ impl ServiceManager {
                 return Err(anyhow::anyhow!("服务不可用: {}", reason));
             }
         }
+        #[cfg(not(target_os = "android"))]
         let _ = tray::Tray::global().update_menu().await;
         Ok(())
     }

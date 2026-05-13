@@ -26,6 +26,7 @@ use crate::{
     utils::{resolve, server},
 };
 use anyhow::Result;
+#[cfg(not(target_os = "android"))]
 use config::Config;
 use once_cell::sync::OnceCell;
 use rust_i18n::i18n;

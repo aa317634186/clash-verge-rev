@@ -3,10 +3,12 @@ use crate::{
     cmd,
     config::{PrfItem, profiles_append_item_safe},
     constants::{files, timing},
-    core::{CoreManager, handle, service, tray, validate::CoreConfigValidator},
+    core::{CoreManager, handle, service, validate::CoreConfigValidator},
     enhance, logging, logging_error,
     utils::{Draft, dirs, help, logging::Type},
 };
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use anyhow::{Result, anyhow};
 use backoff::{Error as BackoffError, ExponentialBackoff};
 use smartstring::alias::String;
@@ -65,6 +67,7 @@ impl Config {
                 d.enable_tun_mode = Some(false);
             });
             verge.apply();
+            #[cfg(not(target_os = "android"))]
             let _ = tray::Tray::global().update_menu().await;
 
             // 分离数据获取和异步调用避免Send问题

@@ -1,10 +1,12 @@
 use crate::{
     config::Config,
-    core::{CoreManager, handle, tray},
+    core::{CoreManager, handle},
     logging, logging_error,
     process::AsyncHandler,
     utils::{self, logging::Type, resolve},
 };
+#[cfg(not(target_os = "android"))]
+use crate::core::tray;
 use serde_yaml_ng::{Mapping, Value};
 use smartstring::alias::String;
 
@@ -81,8 +83,11 @@ pub async fn change_clash_mode(mode: String) {
             let clash_data = Config::clash().await.data_arc();
             if clash_data.save_config().await.is_ok() {
                 handle::Handle::refresh_clash();
-                logging_error!(Type::Tray, tray::Tray::global().update_menu().await);
-                logging_error!(Type::Tray, tray::Tray::global().update_icon().await);
+                #[cfg(not(target_os = "android"))]
+                {
+                    logging_error!(Type::Tray, tray::Tray::global().update_menu().await);
+                    logging_error!(Type::Tray, tray::Tray::global().update_icon().await);
+                }
             }
 
             let is_auto_close_connection = Config::verge()

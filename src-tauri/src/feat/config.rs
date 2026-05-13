@@ -1,10 +1,12 @@
 use crate::{
     config::{Config, IVerge},
-    core::{CoreManager, handle, hotkey, sysopt, tray},
+    core::{CoreManager, handle, sysopt},
     logging_error,
     module::lightweight,
     utils::{draft::SharedBox, logging::Type},
 };
+#[cfg(not(target_os = "android"))]
+use crate::core::{hotkey, tray};
 use anyhow::Result;
 use serde_yaml_ng::Mapping;
 
@@ -21,8 +23,11 @@ pub async fn patch_clash(patch: Mapping) -> Result<()> {
             CoreManager::global().restart_core().await?;
         } else {
             if patch.get("mode").is_some() {
-                logging_error!(Type::Tray, tray::Tray::global().update_menu().await);
-                logging_error!(Type::Tray, tray::Tray::global().update_icon().await);
+                #[cfg(not(target_os = "android"))]
+                {
+                    logging_error!(Type::Tray, tray::Tray::global().update_menu().await);
+                    logging_error!(Type::Tray, tray::Tray::global().update_icon().await);
+                }
             }
             Config::runtime()
                 .await
@@ -202,22 +207,26 @@ async fn process_terminated_flags(update_flags: i32, patch: &IVerge) -> Result<(
     if (update_flags & (UpdateFlags::SysProxy as i32)) != 0 {
         sysopt::Sysopt::global().update_sysproxy().await?;
     }
+    #[cfg(not(target_os = "android"))]
     if (update_flags & (UpdateFlags::Hotkey as i32)) != 0
         && let Some(hotkeys) = &patch.hotkeys
     {
         hotkey::Hotkey::global().update(hotkeys.to_owned()).await?;
     }
-    if (update_flags & (UpdateFlags::SystrayMenu as i32)) != 0 {
-        tray::Tray::global().update_menu().await?;
-    }
-    if (update_flags & (UpdateFlags::SystrayIcon as i32)) != 0 {
-        tray::Tray::global().update_icon().await?;
-    }
-    if (update_flags & (UpdateFlags::SystrayTooltip as i32)) != 0 {
-        tray::Tray::global().update_tooltip().await?;
-    }
-    if (update_flags & (UpdateFlags::SystrayClickBehavior as i32)) != 0 {
-        tray::Tray::global().update_click_behavior().await?;
+    #[cfg(not(target_os = "android"))]
+    {
+        if (update_flags & (UpdateFlags::SystrayMenu as i32)) != 0 {
+            tray::Tray::global().update_menu().await?;
+        }
+        if (update_flags & (UpdateFlags::SystrayIcon as i32)) != 0 {
+            tray::Tray::global().update_icon().await?;
+        }
+        if (update_flags & (UpdateFlags::SystrayTooltip as i32)) != 0 {
+            tray::Tray::global().update_tooltip().await?;
+        }
+        if (update_flags & (UpdateFlags::SystrayClickBehavior as i32)) != 0 {
+            tray::Tray::global().update_click_behavior().await?;
+        }
     }
     if (update_flags & (UpdateFlags::LighteWeight as i32)) != 0 {
         if patch.enable_auto_light_weight_mode.unwrap_or(false) {

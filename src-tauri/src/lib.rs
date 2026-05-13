@@ -340,6 +340,7 @@ mod app_init {
     }
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if app_init::init_singleton_check().is_err() {
         return;

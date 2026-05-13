@@ -126,6 +126,7 @@ sysproxy = { git = "https://github.com/clash-verge-rev/sysproxy-rs" }
 jni = "0.21"
 android_logger = "0.14"
 ndk-context = "0.1"
+openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
 default = ["custom-protocol"]
